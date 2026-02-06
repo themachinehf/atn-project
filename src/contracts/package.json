@@ -1,0 +1,19 @@
+{
+  "name": "ATN Contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for Agent Trust Network",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.js --network",
+    "console": "hardhat console --network"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.0",
+    "hardhat": "^2.17.0",
+    "ethers": "^6.8.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0"
+  }
+}
