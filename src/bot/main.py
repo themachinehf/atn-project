@@ -318,42 +318,10 @@ async def handle_callback(callback: CallbackQuery):
     await callback.answer()
 
 
-import http.server
-import socketserver
-import threading
-
-class HealthHandler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        if self.path == "/health":
-            self.send_response(200)
-            self.send_header("Content-type", "text/plain")
-            self.end_headers()
-            self.wfile.write(b"OK")
-        else:
-            self.send_response(404)
-            self.end_headers()
-_message(self, format    
-    def log, *args):
-        pass  # 禁用日志
-
-def run_healthcheck():
-    """Run healthcheck server (sync wrapper)"""
-    PORT = 8080
-    with socketserver.TCPServer(("", PORT), HealthHandler) as httpd:
-        logger.info(f"Healthcheck server started on port {PORT}")
-        httpd.serve_forever()
-
 async def main():
     """Main entry point"""
     logger.info("Starting ATN Bot...")
     init_database()
-    
-    # Start healthcheck in background
-    health_thread = threading.Thread(target=run_healthcheck, daemon=True)
-    health_thread.start()
-    logger.info("Healthcheck thread started")
-    
-    # Start bot
     await dp.start_polling(bot)
 
 

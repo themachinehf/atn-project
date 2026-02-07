@@ -2,6 +2,6 @@
   "$schema": "https://railway.com/schema.json",
   "deploy": {
     "startCommand": "python src/bot/main.py",
-    "healthcheckPath": "/health"
+    "restartPolicy": "always"
   }
 }
