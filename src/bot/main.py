@@ -3,7 +3,8 @@
 import asyncio
 import logging
 import sqlite3
-import aiohttp
+import http.server
+import socketserver
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -317,24 +318,39 @@ async def handle_callback(callback: CallbackQuery):
     await callback.answer()
 
 
-async def healthcheck(request):
-    """Healthcheck endpoint for Railway"""
-    return aiohttp.web.Response(text="OK", status=200)
+import http.server
+import socketserver
 
+class HealthHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-type", "text/plain")
+            self.end_headers()
+            self.wfile.write(b"OK")
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def log_message(self, format, *args):
+        pass  # 禁用日志
+
+async def start_healthcheck():
+    """Start simple healthcheck server"""
+    PORT = 8080
+    with socketserver.TCPServer(("", PORT), HealthHandler) as httpd:
+        logger.info(f"Healthcheck server started on port {PORT}")
+        httpd.serve_forever()
 
 async def main():
     """Main entry point"""
     logger.info("Starting ATN Bot...")
     init_database()
     
-    # Start healthcheck web server
-    app = aiohttp.web.Application()
-    app.router.add_get("/health", healthcheck)
-    runner = aiohttp.web.AppRunner(app)
-    await runner.setup()
-    site = aiohttp.web.TCPSite(runner, '0.0.0.0', 8080)
-    await site.start()
-    logger.info("Healthcheck server started on port 8080")
+    # Start healthcheck in background
+    import threading
+    health_thread = threading.Thread(target=start_healthcheck, daemon=True)
+    health_thread.start()
     
     # Start bot
     await dp.start_polling(bot)
