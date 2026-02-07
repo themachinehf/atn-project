@@ -3,6 +3,7 @@
 import asyncio
 import logging
 import sqlite3
+import aiohttp
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
@@ -316,10 +317,26 @@ async def handle_callback(callback: CallbackQuery):
     await callback.answer()
 
 
+async def healthcheck(request):
+    """Healthcheck endpoint for Railway"""
+    return aiohttp.web.Response(text="OK", status=200)
+
+
 async def main():
     """Main entry point"""
     logger.info("Starting ATN Bot...")
     init_database()
+    
+    # Start healthcheck web server
+    app = aiohttp.web.Application()
+    app.router.add_get("/health", healthcheck)
+    runner = aiohttp.web.AppRunner(app)
+    await runner.setup()
+    site = aiohttp.web.TCPSite(runner, '0.0.0.0', 8080)
+    await site.start()
+    logger.info("Healthcheck server started on port 8080")
+    
+    # Start bot
     await dp.start_polling(bot)
 
 
