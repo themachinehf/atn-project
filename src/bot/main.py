@@ -320,6 +320,7 @@ async def handle_callback(callback: CallbackQuery):
 
 import http.server
 import socketserver
+import threading
 
 class HealthHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
@@ -331,12 +332,12 @@ class HealthHandler(http.server.SimpleHTTPRequestHandler):
         else:
             self.send_response(404)
             self.end_headers()
-    
-    def log_message(self, format, *args):
+_message(self, format    
+    def log, *args):
         pass  # 禁用日志
 
-async def start_healthcheck():
-    """Start simple healthcheck server"""
+def run_healthcheck():
+    """Run healthcheck server (sync wrapper)"""
     PORT = 8080
     with socketserver.TCPServer(("", PORT), HealthHandler) as httpd:
         logger.info(f"Healthcheck server started on port {PORT}")
@@ -348,9 +349,9 @@ async def main():
     init_database()
     
     # Start healthcheck in background
-    import threading
-    health_thread = threading.Thread(target=start_healthcheck, daemon=True)
+    health_thread = threading.Thread(target=run_healthcheck, daemon=True)
     health_thread.start()
+    logger.info("Healthcheck thread started")
     
     # Start bot
     await dp.start_polling(bot)
