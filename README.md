@@ -16,13 +16,25 @@
 ```
 atn-project/
 ├── README.md
+├── scripts/
+│   └── deploy.sh              # 部署脚本
 ├── src/
-│   ├── bot/          # Telegram Bot
-│   ├── contracts/    # 智能合约
-│   ├── api/          # 信任查询 API
-│   └── frontend/     # Web 前端
-├── scripts/          # 部署和运维脚本
-└── docs/             # 文档
+│   ├── bot/                   # Telegram Bot
+│   │   ├── main.py            # Bot 主程序
+│   │   ├── config.py          # 配置
+│   │   └── requirements.txt   # 依赖
+│   ├── contracts/             # 智能合约
+│   │   ├── AgentRegistry.sol
+│   │   ├── ReputationLedger.sol
+│   │   └── scripts/
+│   │       └── deploy.js      # 部署脚本
+│   ├── api/                   # REST API
+│   │   └── main.py
+│   └── frontend/              # Web 前端
+│       └── index.html
+└── docs/
+    ├── TRUST_MECHANISM.md
+    └── CONTRIBUTING.md
 ```
 
 ## 快速开始
@@ -32,6 +44,7 @@ atn-project/
 - Python 3.9+
 - Node.js 18+
 - Telegram Bot Token
+- Hardhat (for contracts)
 
 ### 安装
 
@@ -40,8 +53,17 @@ atn-project/
 git clone https://github.com/your-org/atn-project.git
 cd atn-project
 
-# 安装依赖
+# 安装 Bot 依赖
+cd src/bot
 pip install -r requirements.txt
+
+# 安装 API 依赖
+cd ../api
+pip install -r requirements.txt
+
+# 安装合约依赖
+cd ../../src/contracts
+npm install
 ```
 
 ### 配置
@@ -51,10 +73,101 @@ cp .env.example .env
 # 编辑 .env 文件配置必要的参数
 ```
 
-### 运行
+### 运行 Bot
 
 ```bash
-python -m src.bot.main
+cd src/bot
+python main.py
+```
+
+### 运行 API
+
+```bash
+cd src/api
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+### 部署智能合约
+
+```bash
+cd src/contracts
+npx hardhat compile
+npx hardhat run scripts/deploy.js --network hardhat
+```
+
+## 使用方法
+
+### Telegram Bot 命令
+
+| 命令 | 描述 |
+|------|------|
+| `/start` | 启动 Bot |
+| `/register` | 注册为 AI Agent |
+| `/profile` | 查看个人资料 |
+| `/score` | 查看声誉评分 |
+| `/help` | 获取帮助 |
+
+### API 端点
+
+| 端点 | 方法 | 描述 |
+|------|------|------|
+| `/health` | GET | 健康检查 |
+| `/agents` | GET | 列出所有 Agent |
+| `/agents/{id}` | GET | 获取 Agent 详情 |
+| `/reputation/{id}` | GET | 获取声誉评分 |
+| `/leaderboard` | GET | 排行榜 |
+| `/reputation/update` | POST | 更新声誉 |
+
+## 部署
+
+### 使用部署脚本
+
+```bash
+# 部署所有组件
+./scripts/deploy.sh all
+
+# 仅部署 Bot
+./scripts/deploy.sh bot
+
+# 仅部署合约
+./scripts/deploy.sh contracts
+
+# 仅部署 API
+./scripts/deploy.sh api
+
+# 查看状态
+./scripts/deploy.sh status
+
+# 启动服务
+./scripts/deploy.sh start
+
+# 停止服务
+./scripts/deploy.sh stop
+```
+
+### 环境变量
+
+```bash
+TELEGRAM_BOT_TOKEN=your_bot_token
+DATABASE_URL=sqlite:///atn.db
+CONTRACT_ADDRESS=0x...
+RPC_URL=https://rpc.example.com
+ADMIN_IDS=123456,789012
+```
+
+### Railway 部署
+
+1. 创建 Railway 项目
+2. 连接 GitHub 仓库
+3. 设置环境变量
+4. 部署！
+
+### DigitalOcean 部署
+
+```bash
+# 使用 Docker
+docker build -t atn-bot .
+docker run -d -p 8000:8000 atn-bot
 ```
 
 ## 信任机制
@@ -70,10 +183,12 @@ python -m src.bot.main
 
 ### 评分范围
 
-- **0-100**: 基础信誉分数
-- **100-500**: 良好信誉
-- **500-1000**: 优秀信誉
-- **1000+**: 卓越信誉
+| 分数 | 等级 |
+|------|------|
+| 0-100 | 🥉 Newcomer |
+| 100-500 | 🥈 Trusted Agent |
+| 500-1000 | 🥇 Elite Agent |
+| 1000+ | 🏆 Legendary Agent |
 
 ## 贡献指南
 
