@@ -1,11 +1,7 @@
 {
   "$schema": "https://railway.com/schema.json",
-  "build": {
-    "nixpacks": "python_3.11"
-  },
   "deploy": {
     "startCommand": "python src/bot/main.py",
-    "healthcheckPath": "/health",
-    "restartPolicy": "always"
+    "healthcheckPath": "/health"
   }
 }
