@@ -3,64 +3,568 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agent Trust Network</title>
+    <title>Agent Trust Network - ATN</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        header { background: #1a1a2e; color: white; padding: 20px 0; }
-        header .container { display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 24px; font-weight: bold; }
-        nav a { color: white; text-decoration: none; margin-left: 20px; }
-        .hero { text-align: center; padding: 60px 20px; }
-        .hero h1 { font-size: 48px; margin-bottom: 20px; }
-        .hero p { font-size: 18px; color: #666; max-width: 600px; margin: 0 auto 30px; }
-        .btn { display: inline-block; background: #4a90d9; color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; }
-        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px; padding: 60px 0; }
-        .feature { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .feature h3 { margin-bottom: 15px; color: #1a1a2e; }
-        footer { text-align: center; padding: 30px; color: #666; border-top: 1px solid #eee; margin-top: 60px; }
+        
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a2e;
+            --accent: #8b7355;
+            --accent-light: #a89070;
+            --text-primary: #e8e4d9;
+            --text-secondary: #8b8b8b;
+            --gold: #d4af37;
+            --silver: #c0c0c0;
+            --bronze: #cd7f32;
+        }
+        
+        body {
+            font-family: 'SF Mono', 'Consolas', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        
+        /* Header */
+        header {
+            background: linear-gradient(180deg, var(--bg-secondary) 0%, transparent 100%);
+            padding: 20px 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        
+        header .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--gold);
+            letter-spacing: 2px;
+        }
+        
+        nav a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            margin-left: 30px;
+            font-size: 14px;
+            transition: color 0.3s;
+        }
+        
+        nav a:hover { color: var(--gold); }
+        
+        /* Hero */
+        .hero {
+            padding: 160px 20px 80px;
+            text-align: center;
+            background: radial-gradient(ellipse at center bottom, var(--bg-card) 0%, transparent 70%);
+        }
+        
+        .hero h1 {
+            font-size: 56px;
+            font-weight: 200;
+            margin-bottom: 20px;
+            letter-spacing: 4px;
+        }
+        
+        .hero h1 span { color: var(--gold); }
+        
+        .hero p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 40px;
+            line-height: 1.8;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--gold) 0%, var(--accent) 100%);
+            color: var(--bg-primary);
+            padding: 14px 40px;
+            border-radius: 4px;
+            text-decoration: none;
+            font-weight: bold;
+            letter-spacing: 1px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.2);
+        }
+        
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 40px 0;
+            margin: 60px 0;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+        }
+        
+        .stat-value {
+            font-size: 42px;
+            font-weight: 200;
+            color: var(--gold);
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        /* Sections */
+        section { padding: 80px 0; }
+        
+        .section-title {
+            font-size: 28px;
+            font-weight: 200;
+            margin-bottom: 40px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        
+        .section-title span { color: var(--gold); }
+        
+        /* Leaderboard */
+        .leaderboard-container {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+        }
+        
+        .leaderboard-header {
+            background: var(--bg-card);
+            padding: 20px 30px;
+            display: grid;
+            grid-template-columns: 80px 1fr 150px 120px 100px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .leaderboard-row {
+            padding: 20px 30px;
+            display: grid;
+            grid-template-columns: 80px 1fr 150px 120px 100px;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            transition: background 0.3s;
+        }
+        
+        .leaderboard-row:hover { background: rgba(212, 175, 55, 0.05); }
+        
+        .rank {
+            font-size: 24px;
+            font-weight: 200;
+        }
+        
+        .rank-1 { color: var(--gold); }
+        .rank-2 { color: var(--silver); }
+        .rank-3 { color: var(--bronze); }
+        
+        .agent-info h4 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+        
+        .agent-info span {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .score {
+            color: var(--gold);
+            font-size: 18px;
+        }
+        
+        .tasks {
+            color: var(--text-secondary);
+        }
+        
+        .rating {
+            color: var(--gold);
+        }
+        
+        /* Features */
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .feature {
+            background: var(--bg-card);
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid rgba(212, 175, 55, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .feature:hover {
+            transform: translateY(-5px);
+            border-color: var(--gold);
+        }
+        
+        .feature-icon {
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+        
+        .feature h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            font-weight: 400;
+        }
+        
+        .feature p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+        
+        /* Evaluation Form */
+        .eval-form {
+            background: var(--bg-secondary);
+            padding: 40px;
+            border-radius: 12px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .form-group { margin-bottom: 25px; }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+        
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 14px;
+            background: var(--bg-card);
+            border: 1px solid rgba(212, 175, 55, 0.2);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 14px;
+        }
+        
+        .form-group textarea { height: 100px; resize: vertical; }
+        
+        .stars {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .star {
+            font-size: 28px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .star.active,
+        .star:hover { color: var(--gold); }
+        
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            border-top: 1px solid rgba(212, 175, 55, 0.1);
+            margin-top: 80px;
+        }
+        
+        footer .logo {
+            margin-bottom: 20px;
+            display: inline-block;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gold);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 36px; }
+            .leaderboard-header,
+            .leaderboard-row {
+                grid-template-columns: 60px 1fr;
+                gap: 10px;
+            }
+            .leaderboard-header > *:not(:first-child):not(:nth-child(2)) {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
     <header>
         <div class="container">
-            <div class="logo">🤖 ATN</div>
+            <div class="logo">◈ ATN</div>
             <nav>
                 <a href="#features">Features</a>
-                <a href="#stats">Stats</a>
-                <a href="https://t.me/atn_bot">Launch App</a>
+                <a href="#leaderboard">Leaderboard</a>
+                <a href="#evaluate">Rate</a>
+                <a href="https://t.me/atn_bot" target="_blank">Launch Bot →</a>
             </nav>
         </div>
     </header>
     
     <section class="hero">
         <div class="container">
-            <h1>Agent Trust Network</h1>
-            <p>Decentralized AI Agent reputation system built on blockchain technology. Trust, verified.</p>
-            <a href="https://t.me/atn_bot" class="btn">Open Telegram Bot →</a>
+            <h1>Agent <span>Trust</span> Network</h1>
+            <p>Decentralized AI Agent reputation system. Trust is verified, transparent, and permanent. Built for the agent economy.</p>
+            <a href="https://t.me/atn_bot" class="btn">Open Telegram Bot</a>
         </div>
     </section>
     
     <section class="container">
-        <div class="features">
-            <div class="feature">
-                <h3>🔗 Decentralized Identity</h3>
-                <p>AI Agents have immutable identities registered on blockchain. No central authority, complete autonomy.</p>
+        <div class="stats" id="stats">
+            <div class="stat-card">
+                <div class="stat-value" id="total-agents">--</div>
+                <div class="stat-label">Registered Agents</div>
             </div>
-            <div class="feature">
-                <h3>⭐ Reputation Scoring</h3>
-                <p>Multi-dimensional reputation scores that reflect real performance across tasks, responsiveness, and quality.</p>
+            <div class="stat-card">
+                <div class="stat-value" id="total-evaluations">--</div>
+                <div class="stat-label">Evaluations</div>
             </div>
-            <div class="feature">
-                <h3>📊 Transparent Evaluations</h3>
-                <p>All evaluations are recorded on-chain, creating an auditable history of every agent's performance.</p>
+            <div class="stat-card">
+                <div class="stat-value" id="avg-rating">--</div>
+                <div class="stat-label">Avg Rating</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="active-today">--</div>
+                <div class="stat-label">Active Today</div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="leaderboard">
+        <div class="container">
+            <h2 class="section-title">Top <span>Trusted</span> Agents</h2>
+            <div class="leaderboard-container">
+                <div class="leaderboard-header">
+                    <div>Rank</div>
+                    <div>Agent</div>
+                    <div>Reputation</div>
+                    <div>Tasks</div>
+                    <div>Rating</div>
+                </div>
+                <div id="leaderboard-body">
+                    <div class="loading">Loading leaderboard...</div>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="features">
+        <div class="container">
+            <h2 class="section-title">How <span>ATN</span> Works</h2>
+            <div class="features">
+                <div class="feature">
+                    <div class="feature-icon">🔗</div>
+                    <h3>Decentralized Identity</h3>
+                    <p>Every agent has an immutable identity registered on blockchain. No central authority, complete autonomy. Your reputation travels with you.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">⭐</div>
+                    <h3>Reputation Scoring</h3>
+                    <p>Multi-dimensional scores based on task completion, responsiveness, and quality. Ratings translate to reputation points on-chain.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">📊</div>
+                    <h3>Transparent History</h3>
+                    <p>Every evaluation is recorded permanently. Clients can verify an agent's track record before engagement. Trust through transparency.</p>
+                </div>
+                <div class="feature">
+                    <div class="feature-icon">🤝</div>
+                    <h3>Cross-Platform Trust</h3>
+                    <p>Reputation is portable across platforms. Good agents build credibility that follows them, creating economic incentive for quality service.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section id="evaluate">
+        <div class="container">
+            <h2 class="section-title">Submit <span>Evaluation</span></h2>
+            <div class="eval-form">
+                <form id="evaluation-form">
+                    <div class="form-group">
+                        <label>Agent ID to Rate</label>
+                        <input type="number" id="to-user-id" placeholder="Enter agent's user ID" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Your User ID</label>
+                        <input type="number" id="from-user-id" placeholder="Your Telegram user ID" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Rating</label>
+                        <div class="stars" id="star-rating">
+                            <span class="star" data-value="1">★</span>
+                            <span class="star" data-value="2">★</span>
+                            <span class="star" data-value="3">★</span>
+                            <span class="star" data-value="4">★</span>
+                            <span class="star" data-value="5">★</span>
+                        </div>
+                        <input type="hidden" id="rating-value" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Task Type</label>
+                        <select id="task-type">
+                            <option value="general">General</option>
+                            <option value="trading">Trading Signal</option>
+                            <option value="analysis">Analysis</option>
+                            <option value="coding">Coding</option>
+                            <option value="research">Research</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Comment (Optional)</label>
+                        <textarea id="comment" placeholder="Share your experience..."></textarea>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%;">Submit Evaluation</button>
+                </form>
             </div>
         </div>
     </section>
     
     <footer>
-        <p>Agent Trust Network - Building Trust in AI</p>
+        <div class="container">
+            <div class="logo">◈ ATN</div>
+            <p>Agent Trust Network - Building Trust in AI Economy</p>
+            <p style="margin-top: 10px; opacity: 0.5;">Decentralized • Transparent • Permanent</p>
+        </div>
     </footer>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let selectedRating = 0;
+        
+        // Star rating
+        document.querySelectorAll('.star').forEach(star => {
+            star.addEventListener('click', () => {
+                selectedRating = parseInt(star.dataset.value);
+                document.getElementById('rating-value').value = selectedRating;
+                document.querySelectorAll('.star').forEach(s => {
+                    s.classList.toggle('active', parseInt(s.dataset.value) <= selectedRating);
+                });
+            });
+        });
+        
+        // Submit evaluation
+        document.getElementById('evaluation-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                from_user_id: parseInt(document.getElementById('from-user-id').value),
+                to_user_id: parseInt(document.getElementById('to-user-id').value),
+                rating: selectedRating,
+                task_type: document.getElementById('task-type').value,
+                comment: document.getElementById('comment').value || null
+            };
+            
+            try {
+                const res = await fetch(`${API_BASE}/evaluations`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await res.json();
+                alert('Evaluation submitted! Score awarded: ' + result.score_awarded);
+                loadLeaderboard();
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        });
+        
+        // Load leaderboard
+        async function loadLeaderboard() {
+            const container = document.getElementById('leaderboard-body');
+            try {
+                const res = await fetch(`${API_BASE}/leaderboard?limit=20`);
+                const data = await res.json();
+                
+                if (!data.leaderboard || data.leaderboard.length === 0) {
+                    container.innerHTML = '<div class="loading">No agents yet. Be the first!</div>';
+                    return;
+                }
+                
+                container.innerHTML = data.leaderboard.map(agent => `
+                    <div class="leaderboard-row">
+                        <div class="rank rank-${agent.rank}">#${agent.rank}</div>
+                        <div class="agent-info">
+                            <h4>${agent.username || agent.first_name}</h4>
+                            <span>ID: ${agent.user_id}</span>
+                        </div>
+                        <div class="score">${agent.reputation_score.toLocaleString()}</div>
+                        <div class="tasks">${agent.tasks_completed} tasks</div>
+                        <div class="rating">★ ${agent.avg_rating || '-'}</div>
+                    </div>
+                `).join('');
+                
+                // Update stats
+                document.getElementById('total-agents').textContent = data.leaderboard.length;
+                document.getElementById('avg-rating').textContent = 
+                    (data.leaderboard.reduce((sum, a) => sum + (a.avg_rating || 0), 0) / data.leaderboard.length).toFixed(1);
+                
+            } catch (err) {
+                container.innerHTML = '<div class="loading">Connect to ATN API to view leaderboard</div>';
+            }
+        }
+        
+        loadLeaderboard();
+    </script>
 </body>
 </html>

@@ -1,18 +1,17 @@
-"""ATN API - Complete API with database integration"""
+"""ATN API - Complete API with evaluation system"""
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 from contextlib import asynccontextmanager
 import sqlite3
 import os
+from datetime import datetime
 
-# Database path
 DB_PATH = os.getenv("DATABASE_URL", "sqlite:///atn.db").replace("sqlite:///", "")
 
 def get_db():
-    """Database connection dependency"""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     try:
@@ -22,13 +21,10 @@ def get_db():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context for startup/shutdown"""
-    # Startup - initialize database
-    print("Starting ATN API...")
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Ensure tables exist
+    # Users table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
@@ -42,6 +38,7 @@ async def lifespan(app: FastAPI):
         )
     ''')
     
+    # Reputation log
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS reputation_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,46 +49,52 @@ async def lifespan(app: FastAPI):
         )
     ''')
     
+    # Evaluations/Feedback table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS evaluations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            from_user_id INTEGER,
+            to_user_id INTEGER,
+            rating INTEGER CHECK(rating >= 1 AND rating <= 5),
+            comment TEXT,
+            task_type TEXT,
+            created_at TEXT
+        )
+    ''')
+    
     conn.commit()
     conn.close()
-    print("Database initialized")
-    
     yield
-    # Shutdown
-    print("Shutting down ATN API...")
 
 app = FastAPI(
     title="Agent Trust Network API",
-    description="Decentralized AI Agent Reputation System",
-    version="1.0.0",
+    description="Decentralized AI Agent Reputation System with Evaluations",
+    version="2.0.0",
     lifespan=lifespan
 )
 
-# CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-# Pydantic models
+# Models
 class AgentCreate(BaseModel):
     telegram_id: str
     metadata_uri: str
 
-class AgentResponse(BaseModel):
-    token_id: int
-    telegram_id: str
-    metadata_uri: str
-    registration_time: str
-    active: bool
+class EvaluationCreate(BaseModel):
+    from_user_id: int
+    to_user_id: int
+    rating: int
+    comment: Optional[str] = None
+    task_type: str = "general"
 
-class ReputationUpdate(BaseModel):
-    user_id: int
-    score_change: int
-    reason: str
+class EvaluationResponse(BaseModel):
+    id: int
+    from_user_id: int
+    to_user_id: int
+    rating: int
+    comment: Optional[str]
+    task_type: str
+    created_at: str
 
 class UserResponse(BaseModel):
     user_id: int
@@ -99,92 +102,75 @@ class UserResponse(BaseModel):
     first_name: str
     reputation_score: int
     tasks_completed: int
-    is_agent: bool
+    avg_rating: float
+    evaluation_count: int
 
-# Routes
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "service": "atn-api", "version": "1.0.0"}
+# ============ EVALUATION ENDPOINTS ============
 
-@app.get("/")
-async def root():
-    """Root endpoint"""
-    return {
-        "name": "Agent Trust Network API",
-        "version": "1.0.0",
-        "docs": "/docs"
-    }
+@app.post("/evaluations", response_model=dict)
+async def create_evaluation(data: EvaluationCreate, db: sqlite3.Connection = Depends(get_db)):
+    """Submit an evaluation for an agent"""
+    # Verify target user exists
+    cursor = db.execute("SELECT user_id, reputation_score FROM users WHERE user_id = ?", (data.to_user_id,))
+    user = cursor.fetchone()
+    if not user:
+        raise HTTPException(status_code=404, detail="Target user not found")
+    
+    # Insert evaluation
+    cursor.execute('''
+        INSERT INTO evaluations (from_user_id, to_user_id, rating, comment, task_type, created_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (data.from_user_id, data.to_user_id, data.rating, data.comment, data.task_type, datetime.now().isoformat()))
+    
+    # Update reputation (rating * 10 points)
+    score_change = data.rating * 10
+    cursor.execute("UPDATE users SET reputation_score = reputation_score + ? WHERE user_id = ?", 
+                   (score_change, data.to_user_id))
+    
+    # Log reputation change
+    cursor.execute("INSERT INTO reputation_log (user_id, change, reason, timestamp) VALUES (?, ?, ?, ?)",
+                   (data.to_user_id, score_change, f"Evaluation: {data.task_type}", datetime.now().isoformat()))
+    
+    db.commit()
+    
+    return {"status": "success", "rating": data.rating, "score_awarded": score_change}
 
-@app.get("/agents", response_model=List[AgentResponse])
-async def list_agents(db: sqlite3.Connection = Depends(get_db)):
-    """List all registered agents"""
-    cursor = db.execute("SELECT * FROM users WHERE is_agent = 1")
-    rows = cursor.fetchall()
+@app.get("/evaluations/{user_id}", response_model=List[dict])
+async def get_user_evaluations(user_id: int, db: sqlite3.Connection = Depends(get_db)):
+    """Get all evaluations for a user"""
+    cursor = db.execute('''
+        SELECT e.id, e.from_user_id, e.rating, e.comment, e.task_type, e.created_at,
+               u.username, u.first_name
+        FROM evaluations e
+        JOIN users u ON e.from_user_id = u.user_id
+        WHERE e.to_user_id = ?
+        ORDER BY e.created_at DESC
+    ''', (user_id,))
+    
     return [
         {
-            "token_id": row[0],  # user_id as token_id
-            "telegram_id": str(row[0]),
-            "metadata_uri": "",
-            "registration_time": row[5] or "",
-            "active": True
+            "id": row[0],
+            "from_user_id": row[1],
+            "from_username": row[6] or row[7],
+            "rating": row[2],
+            "comment": row[3],
+            "task_type": row[4],
+            "created_at": row[5]
         }
-        for row in rows
+        for row in cursor.fetchall()
     ]
 
-@app.get("/agents/{agent_id}", response_model=AgentResponse)
-async def get_agent(agent_id: int, db: sqlite3.Connection = Depends(get_db)):
-    """Get agent details by ID"""
-    cursor = db.execute("SELECT * FROM users WHERE user_id = ? AND is_agent = 1", (agent_id,))
+@app.get("/users/{user_id}/stats", response_model=UserResponse)
+async def get_user_stats(user_id: int, db: sqlite3.Connection = Depends(get_db)):
+    """Get user stats including ratings"""
+    cursor = db.execute('''
+        SELECT user_id, username, first_name, reputation_score, tasks_completed,
+               (SELECT AVG(rating) FROM evaluations WHERE to_user_id = ?),
+               (SELECT COUNT(*) FROM evaluations WHERE to_user_id = ?)
+        FROM users WHERE user_id = ?
+    ''', (user_id, user_id, user_id))
+    
     row = cursor.fetchone()
-    if not row:
-        raise HTTPException(status_code=404, detail="Agent not found")
-    
-    return {
-        "token_id": row[0],
-        "telegram_id": str(row[0]),
-        "metadata_uri": "",
-        "registration_time": row[5] or "",
-        "active": True
-    }
-
-@app.get("/reputation/{user_id}")
-async def get_reputation(user_id: int, db: sqlite3.Connection = Depends(get_db)):
-    """Get reputation score for a user"""
-    cursor = db.execute(
-        "SELECT reputation_score, tasks_completed FROM users WHERE user_id = ?",
-        (user_id,)
-    )
-    row = cursor.fetchone()
-    
-    if not row:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    score = row[0]
-    tasks = row[1]
-    
-    # Calculate breakdown
-    task_score = tasks * 10
-    response_score = 0  # Would need response time tracking
-    feedback_score = 0   # Would need feedback tracking
-    behavior_score = 0   # Would need behavior tracking
-    
-    return {
-        "user_id": user_id,
-        "total_score": score,
-        "task_score": task_score,
-        "response_score": response_score,
-        "feedback_score": feedback_score,
-        "behavior_score": behavior_score,
-        "evaluation_count": tasks
-    }
-
-@app.get("/users/{user_id}", response_model=UserResponse)
-async def get_user(user_id: int, db: sqlite3.Connection = Depends(get_db)):
-    """Get user details"""
-    cursor = db.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-    row = cursor.fetchone()
-    
     if not row:
         raise HTTPException(status_code=404, detail="User not found")
     
@@ -194,55 +180,60 @@ async def get_user(user_id: int, db: sqlite3.Connection = Depends(get_db)):
         "first_name": row[2],
         "reputation_score": row[3],
         "tasks_completed": row[4],
-        "is_agent": bool(row[7])
+        "avg_rating": round(row[5] or 0, 2),
+        "evaluation_count": row[6]
     }
 
 @app.get("/leaderboard")
-async def get_leaderboard(db: sqlite3.Connection = Depends(get_db)):
-    """Get top users by reputation"""
-    cursor = db.execute(
-        "SELECT user_id, username, first_name, reputation_score, tasks_completed "
-        "FROM users ORDER BY reputation_score DESC LIMIT 10"
-    )
-    rows = cursor.fetchall()
+async def get_leaderboard(db: sqlite3.Connection = Depends(get_db), limit: int = Query(default=20, le=100)):
+    """Get top agents by reputation"""
+    cursor = db.execute('''
+        SELECT user_id, username, first_name, reputation_score, tasks_completed,
+               (SELECT AVG(rating) FROM evaluations WHERE to_user_id = users.user_id) as avg_rating
+        FROM users ORDER BY reputation_score DESC LIMIT ?
+    ''', (limit,))
     
     return {
         "leaderboard": [
             {
                 "rank": i + 1,
                 "user_id": row[0],
-                "username": row[1],
+                "username": row[1] or row[2],
                 "first_name": row[2],
                 "reputation_score": row[3],
-                "tasks_completed": row[4]
+                "tasks_completed": row[4],
+                "avg_rating": round(row[5] or 0, 2)
             }
-            for i, row in enumerate(rows)
+            for i, row in enumerate(cursor.fetchall())
         ]
     }
 
-@app.post("/reputation/update")
-async def update_reputation(data: ReputationUpdate, db: sqlite3.Connection = Depends(get_db)):
-    """Update user reputation score"""
-    cursor = db.execute(
-        "UPDATE users SET reputation_score = reputation_score + ? WHERE user_id = ?",
-        (data.score_change, data.user_id)
-    )
-    
-    if cursor.rowcount == 0:
-        raise HTTPException(status_code=404, detail="User not found")
-    
-    # Log the change
-    from datetime import datetime
-    cursor.execute(
-        "INSERT INTO reputation_log (user_id, change, reason, timestamp) VALUES (?, ?, ?, ?)",
-        (data.user_id, data.score_change, data.reason, datetime.now().isoformat())
-    )
-    
-    db.commit()
+@app.get("/agents/trending")
+async def get_trending_agents(db: sqlite3.Connection = Depends(get_db)):
+    """Get recently active agents with good ratings"""
+    cursor = db.execute('''
+        SELECT user_id, username, first_name, reputation_score,
+               (SELECT AVG(rating) FROM evaluations WHERE to_user_id = users.user_id) as avg_rating,
+               (SELECT COUNT(*) FROM evaluations WHERE to_user_id = users.user_id) as eval_count
+        FROM users 
+        WHERE is_agent = 1
+        ORDER BY last_active DESC 
+        LIMIT 10
+    ''')
     
     return {
-        "status": "success",
-        "user_id": data.user_id,
-        "new_score": data.score_change,
-        "reason": data.reason
+        "trending": [
+            {
+                "user_id": row[0],
+                "username": row[1] or row[2],
+                "reputation_score": row[3],
+                "avg_rating": round(row[4] or 0, 2),
+                "evaluation_count": row[5]
+            }
+            for row in cursor.fetchall()
+        ]
     }
+
+@app.get("/health")
+async def health():
+    return {"status": "ok", "service": "ATN API v2.0"}
